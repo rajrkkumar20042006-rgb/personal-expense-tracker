@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Expense Tracker</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <!-- Auth Screen Modal -->
+    <div class="auth-overlay" id="auth-screen">
+        <div class="auth-card">
+            <h2 id="auth-title">Login to Account</h2>
+            <form id="auth-form">
+                <input type="text" id="auth-username" placeholder="Username" required>
+                <input type="password" id="auth-password" placeholder="Password" required>
+                <button type="submit" id="auth-submit-btn">Login</button>
+            </form>
+            <p class="auth-toggle">
+                <span id="auth-toggle-text">Don't have an account?</span>
+                <a onclick="toggleAuthMode()" id="auth-toggle-link">Sign Up</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Container -->
+    <div id="main-dashboard" style="display: none;">
+        <div id="report-container">
+            <!-- Header Section -->
+            <div class="header-container">
+                <div>
+                    <h1>Personal Expense Tracker</h1>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 4px;">
+                        Welcome, <span id="user-display-name"
+                            style="color: var(--neon-rose); font-weight: 700;">User</span>!
+                    </p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="theme-toggle-btn" onclick="toggleTheme()">
+                        <span id="theme-icon">☀️</span> <span id="theme-text">Bright Mode</span>
+                    </button>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </div>
+
+            <!-- Summary & Budget Grid -->
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h2>Total Spent</h2>
+                    ₹<span id="total-amount">0.00</span>
+                </div>
+
+                <div class="budget-card">
+                    <h2>Monthly Budget</h2>
+                    <div class="budget-inputs">
+                        <input type="number" id="budget-limit" placeholder="Set Budget (₹)" value="10000"
+                            oninput="calculateBudget()">
+                    </div>
+                    <p style="font-size: 0.85rem; margin-bottom: 6px; color: var(--text-muted);">
+                        Used: ₹<span id="budget-used">0</span> / ₹<span id="budget-total">10000</span>
+                    </p>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="budget-progress"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Insights Row -->
+            <div class="insights-grid">
+                <div class="insight-card">
+                    <span class="label">Highest Expense</span>
+                    <span class="value" id="highest-amount">₹0.00</span>
+                    <span class="sub-value" id="highest-title">None</span>
+                </div>
+                <div class="insight-card">
+                    <span class="label">Top Category</span>
+                    <span class="value" id="top-category">None</span>
+                    <span class="sub-value" id="top-category-amount">₹0.00</span>
+                </div>
+                <div class="insight-card">
+                    <span class="label">Total Records</span>
+                    <span class="value" id="total-count">0</span>
+                    <span class="sub-value">Transactions</span>
+                </div>
+            </div>
+
+            <!-- Dual Chart Analytics -->
+            <div class="charts-grid">
+                <div class="card">
+                    <h2>Category Analytics</h2>
+                    <canvas id="expenseChart"></canvas>
+                </div>
+                <div class="card">
+                    <h2>Spending Trend</h2>
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Expense Form -->
+        <div class="card">
+            <h2>Add New Expense</h2>
+            <form id="expense-form">
+                <input type="text" id="title" placeholder="Title" required>
+                <input type="number" id="amount" step="0.01" placeholder="Amount (in ₹)" required>
+                <select id="category" required>
+                    <option value="">Select Category</option>
+                    <option value="Food">Food</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Bills">Bills</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select id="payment_mode" required>
+                    <option value="UPI">UPI</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                </select>
+                <input type="date" id="date" required>
+                <input type="text" id="notes" placeholder="Notes (Optional)">
+                <button type="submit">Add Expense</button>
+            </form>
+        </div>
+
+        <!-- Records & Filters -->
+        <div class="card">
+            <h2>Expense Records</h2>
+            <div class="controls-bar">
+                <input type="text" id="search-input" placeholder="Search expenses..." onkeyup="fetchExpenses()">
+
+                <select id="filter-category" onchange="fetchExpenses()">
+                    <option value="ALL">All Categories</option>
+                    <option value="Food">Food</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Bills">Bills</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Other">Other</option>
+                </select>
+
+                <!-- Styled Start & End Date Wrappers -->
+                <div class="date-input-wrapper">
+                    <label for="start-date">Start:</label>
+                    <input type="date" id="start-date" onchange="fetchExpenses()">
+                </div>
+
+                <div class="date-input-wrapper">
+                    <label for="end-date">End:</label>
+                    <input type="date" id="end-date" onchange="fetchExpenses()">
+                </div>
+
+                <button class="action-btn" style="grid-column: auto; padding: 10px 14px; font-size: 0.85rem;"
+                    onclick="clearDateFilter()">Clear Dates</button>
+
+                <button class="export-btn" onclick="exportToCSV()">Export CSV</button>
+                <button class="export-btn" style="background-color: #8B5CF6;" onclick="exportToPDF()">Export
+                    PDF</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Amount</th>
+                        <th>Category</th>
+                        <th>Mode</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="expense-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Expense</h2>
+                <button class="close-modal-btn" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="edit-expense-form">
+                <input type="hidden" id="edit-id">
+                <input type="text" id="edit-title" placeholder="Title" required>
+                <input type="number" id="edit-amount" step="0.01" placeholder="Amount (in ₹)" required>
+                <select id="edit-category" required>
+                    <option value="Food">Food</option>
+                    <option value="Travel">Travel</option>
+                    <option value="Bills">Bills</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select id="edit-payment_mode" required>
+                    <option value="UPI">UPI</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                </select>
+                <input type="date" id="edit-date" required>
+                <input type="text" id="edit-notes" placeholder="Notes (Optional)">
+                <button type="submit">Update Expense</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000";
+        let isSignUpMode = false;
+        let categoryChartInstance = null;
+        let trendChartInstance = null;
+        let allExpensesData = [];
+
+        function getAuthHeaders() {
+            const token = localStorage.getItem("jwt_token");
+            return {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            };
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            document.getElementById("auth-title").innerText = isSignUpMode ? "Create New Account" : "Login to Account";
+            document.getElementById("auth-submit-btn").innerText = isSignUpMode ? "Sign Up" : "Login";
+            document.getElementById("auth-toggle-text").innerText = isSignUpMode ? "Already have an account?" : "Don't have an account?";
+            document.getElementById("auth-toggle-link").innerText = isSignUpMode ? "Login" : "Sign Up";
+        }
+
+        async function performLogin(username, password) {
+            const formData = new URLSearchParams();
+            formData.append("username", username);
+            formData.append("password", password);
+
+            const res = await fetch(`${API_BASE}/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                localStorage.setItem("jwt_token", data.access_token);
+                localStorage.setItem("username", username);
+                checkAuth();
+            } else {
+                const err = await res.json();
+                alert(err.detail || "Invalid username or password");
+            }
+        }
+
+        document.getElementById("auth-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("auth-username").value;
+            const password = document.getElementById("auth-password").value;
+
+            if (isSignUpMode) {
+                const res = await fetch(`${API_BASE}/register`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (res.ok) {
+                    await performLogin(username, password);
+                } else {
+                    const err = await res.json();
+                    alert(err.detail || "Registration failed");
+                }
+            } else {
+                await performLogin(username, password);
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem("jwt_token");
+            localStorage.removeItem("username");
+            checkAuth();
+        }
+
+        function checkAuth() {
+            const token = localStorage.getItem("jwt_token");
+            const username = localStorage.getItem("username");
+
+            if (token && username) {
+                document.getElementById("auth-screen").style.display = "none";
+                document.getElementById("main-dashboard").style.display = "block";
+                document.getElementById("user-display-name").innerText = username;
+                fetchExpenses();
+            } else {
+                document.getElementById("auth-screen").style.display = "flex";
+                document.getElementById("main-dashboard").style.display = "none";
+            }
+        }
+
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem("selectedTheme");
+            if (savedTheme === "light") {
+                document.body.classList.add("light-mode");
+                document.getElementById("theme-icon").innerText = "🌙";
+                document.getElementById("theme-text").innerText = "Dark Mode";
+            } else {
+                document.body.classList.remove("light-mode");
+                document.getElementById("theme-icon").innerText = "☀️";
+                document.getElementById("theme-text").innerText = "Bright Mode";
+            }
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle("light-mode");
+            const isLight = document.body.classList.contains("light-mode");
+            localStorage.setItem("selectedTheme", isLight ? "light" : "dark");
+            document.getElementById("theme-icon").innerText = isLight ? "🌙" : "☀️";
+            document.getElementById("theme-text").innerText = isLight ? "Dark Mode" : "Bright Mode";
+            renderCharts(allExpensesData);
+        }
+
+        function updateInsights(data) {
+            if (!data || data.length === 0) {
+                document.getElementById("highest-amount").innerText = "₹0.00";
+                document.getElementById("highest-title").innerText = "None";
+                document.getElementById("top-category").innerText = "None";
+                document.getElementById("top-category-amount").innerText = "₹0.00";
+                document.getElementById("total-count").innerText = "0";
+                return;
+            }
+
+            const highest = data.reduce((max, item) => item.amount > max.amount ? item : max, data[0]);
+            document.getElementById("highest-amount").innerText = `₹${highest.amount.toFixed(2)}`;
+            document.getElementById("highest-title").innerText = highest.title;
+
+            const catTotals = {};
+            data.forEach(item => {
+                catTotals[item.category] = (catTotals[item.category] || 0) + item.amount;
+            });
+            let topCat = "";
+            let maxCatTotal = 0;
+            for (const cat in catTotals) {
+                if (catTotals[cat] > maxCatTotal) {
+                    maxCatTotal = catTotals[cat];
+                    topCat = cat;
+                }
+            }
+            document.getElementById("top-category").innerText = topCat || "None";
+            document.getElementById("top-category-amount").innerText = `₹${maxCatTotal.toFixed(2)}`;
+            document.getElementById("total-count").innerText = data.length;
+        }
+
+        function calculateBudget(totalSpent = null) {
+            if (totalSpent === null) {
+                totalSpent = parseFloat(document.getElementById("total-amount").innerText) || 0;
+            }
+            const budgetLimit = parseFloat(document.getElementById("budget-limit").value) || 0;
+            document.getElementById("budget-used").innerText = totalSpent.toFixed(2);
+            document.getElementById("budget-total").innerText = budgetLimit.toFixed(2);
+            const percentage = budgetLimit > 0 ? Math.min((totalSpent / budgetLimit) * 100, 100) : 0;
+            document.getElementById("budget-progress").style.width = percentage + "%";
+        }
+
+        function renderCharts(data) {
+            const isLight = document.body.classList.contains("light-mode");
+            const textColor = isLight ? '#3A0F34' : '#A1A1AA';
+
+            const categoryTotals = {};
+            data.forEach(item => {
+                categoryTotals[item.category] = (categoryTotals[item.category] || 0) + item.amount;
+            });
+
+            const catLabels = Object.keys(categoryTotals);
+            const catAmounts = Object.values(categoryTotals);
+            const ctxCat = document.getElementById('expenseChart').getContext('2d');
+
+            if (categoryChartInstance) categoryChartInstance.destroy();
+
+            categoryChartInstance = new Chart(ctxCat, {
+                type: 'doughnut',
+                data: {
+                    labels: catLabels,
+                    datasets: [{
+                        data: catAmounts,
+                        backgroundColor: isLight
+                            ? ['#EAAA00', '#3A0F34', '#10B981', '#007BA7', '#8B5CF6']
+                            : ['#FF2D95', '#007BA7', '#10B981', '#F59E0B', '#8B5CF6']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { color: textColor } } }
+                }
+            });
+
+            const dateTotals = {};
+            data.forEach(item => {
+                dateTotals[item.date] = (dateTotals[item.date] || 0) + item.amount;
+            });
+
+            const sortedDates = Object.keys(dateTotals).sort();
+            const trendAmounts = sortedDates.map(d => dateTotals[d]);
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+
+            if (trendChartInstance) trendChartInstance.destroy();
+
+            const lineColor = isLight ? '#EAAA00' : '#FF2D95';
+
+            trendChartInstance = new Chart(ctxTrend, {
+                type: 'line',
+                data: {
+                    labels: sortedDates,
+                    datasets: [{
+                        label: 'Daily Spending (₹)',
+                        data: trendAmounts,
+                        borderColor: lineColor,
+                        backgroundColor: isLight ? 'rgba(234, 170, 0, 0.15)' : 'rgba(255, 45, 149, 0.15)',
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: lineColor
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { ticks: { color: textColor }, grid: { display: false } },
+                        y: { ticks: { color: textColor }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    },
+                    plugins: { legend: { labels: { color: textColor } } }
+                }
+            });
+        }
+
+        function clearDateFilter() {
+            document.getElementById("start-date").value = "";
+            document.getElementById("end-date").value = "";
+            fetchExpenses();
+        }
+
+        async function fetchExpenses() {
+            const res = await fetch(`${API_BASE}/expenses/`, {
+                headers: getAuthHeaders()
+            });
+
+            if (res.status === 401) {
+                logout();
+                return;
+            }
+
+            allExpensesData = await res.json();
+
+            const list = document.getElementById("expense-list");
+            const filterCategory = document.getElementById("filter-category").value;
+            const searchQuery = document.getElementById("search-input").value.toLowerCase();
+            const startDate = document.getElementById("start-date").value;
+            const endDate = document.getElementById("end-date").value;
+
+            list.innerHTML = "";
+            let totalSpent = 0;
+
+            const filteredData = allExpensesData.filter(item => {
+                const matchesCategory = filterCategory === "ALL" || item.category === filterCategory;
+                const matchesSearch = item.title.toLowerCase().includes(searchQuery) ||
+                    (item.notes && item.notes.toLowerCase().includes(searchQuery));
+
+                let matchesDate = true;
+                if (startDate) matchesDate = matchesDate && item.date >= startDate;
+                if (endDate) matchesDate = matchesDate && item.date <= endDate;
+
+                return matchesCategory && matchesSearch && matchesDate;
+            });
+
+            filteredData.forEach(item => {
+                totalSpent += item.amount;
+                list.innerHTML += `
+                    <tr>
+                        <td>${item.title}</td>
+                        <td>₹${item.amount}</td>
+                        <td>${item.category}</td>
+                        <td>${item.payment_mode}</td>
+                        <td>${item.date}</td>
+                        <td>
+                            <button class="edit-btn" onclick="openEditModal(${item.id})">Edit</button>
+                            <button class="delete-btn" onclick="deleteExpense(${item.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById("total-amount").innerText = totalSpent.toFixed(2);
+            calculateBudget(totalSpent);
+            updateInsights(filteredData);
+            renderCharts(filteredData);
+        }
+
+        function openEditModal(id) {
+            const item = allExpensesData.find(e => e.id === id);
+            if (!item) return;
+
+            document.getElementById("edit-id").value = item.id;
+            document.getElementById("edit-title").value = item.title;
+            document.getElementById("edit-amount").value = item.amount;
+            document.getElementById("edit-category").value = item.category;
+            document.getElementById("edit-payment_mode").value = item.payment_mode;
+            document.getElementById("edit-date").value = item.date;
+            document.getElementById("edit-notes").value = item.notes || "";
+
+            document.getElementById("edit-modal").classList.add("active");
+        }
+
+        function closeEditModal() {
+            document.getElementById("edit-modal").classList.remove("active");
+        }
+
+        document.getElementById("edit-expense-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const id = document.getElementById("edit-id").value;
+            const updatedData = {
+                title: document.getElementById("edit-title").value,
+                amount: parseFloat(document.getElementById("edit-amount").value),
+                category: document.getElementById("edit-category").value,
+                payment_mode: document.getElementById("edit-payment_mode").value,
+                date: document.getElementById("edit-date").value,
+                notes: document.getElementById("edit-notes").value || null
+            };
+
+            await fetch(`${API_BASE}/expenses/${id}`, {
+                method: "PUT",
+                headers: getAuthHeaders(),
+                body: JSON.stringify(updatedData)
+            });
+
+            closeEditModal();
+            fetchExpenses();
+        });
+
+        document.getElementById("expense-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const expenseData = {
+                title: document.getElementById("title").value,
+                amount: parseFloat(document.getElementById("amount").value),
+                category: document.getElementById("category").value,
+                payment_mode: document.getElementById("payment_mode").value,
+                date: document.getElementById("date").value,
+                notes: document.getElementById("notes").value || null
+            };
+
+            await fetch(`${API_BASE}/expenses/`, {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify(expenseData)
+            });
+
+            document.getElementById("expense-form").reset();
+            fetchExpenses();
+        });
+
+        async function deleteExpense(id) {
+            await fetch(`${API_BASE}/expenses/${id}`, {
+                method: "DELETE",
+                headers: getAuthHeaders()
+            });
+            fetchExpenses();
+        }
+
+        function exportToCSV() {
+            if (allExpensesData.length === 0) {
+                alert("No expense data available to export!");
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,ID,Title,Amount,Category,Payment Mode,Date,Notes\n";
+            allExpensesData.forEach(row => {
+                csvContent += `${row.id},"${row.title}",${row.amount},${row.category},${row.payment_mode},${row.date},"${row.notes || ''}"\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "expenses_report.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportToPDF() {
+            window.print();
+        }
+
+        applySavedTheme();
+        checkAuth();
+    </script>
+</body>
+
+</html>
