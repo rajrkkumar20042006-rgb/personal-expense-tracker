@@ -8,6 +8,90 @@
     <link rel="stylesheet" href="/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Top Navigation Tabs Styling */
+        .nav-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 18px 0 22px 0;
+            padding: 8px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        body.light-mode .nav-tabs {
+            background: rgba(58, 15, 52, 0.05);
+            border: 1px solid rgba(58, 15, 52, 0.12);
+        }
+
+        .nav-tab-btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 11px 16px;
+            border-radius: 10px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            background: transparent;
+            color: inherit;
+            transition: all 0.25s ease;
+            width: auto;
+        }
+
+        .nav-tab-btn:hover {
+            background: rgba(255, 45, 149, 0.15);
+        }
+
+        .nav-tab-btn.active {
+            background: linear-gradient(90deg, #FF2D95, #8B5CF6);
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(255, 45, 149, 0.35);
+        }
+
+        body.light-mode .nav-tab-btn.active {
+            background: linear-gradient(90deg, #3A0F34, #6D28D9);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(58, 15, 52, 0.25);
+        }
+
+        /* Add Expense Header Button */
+        .add-expense-trigger-btn {
+            background: linear-gradient(90deg, #10B981, #059669);
+            color: #ffffff;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: auto;
+        }
+
+        .add-expense-trigger-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.5);
+        }
+
+        /* Single Chart Page Container */
+        .single-chart-card {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .single-chart-wrapper {
+            position: relative;
+            max-height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 16px;
+        }
+
         /* AI Financial Assistant Styling */
         .ai-assistant-card {
             margin: 22px 0;
@@ -185,24 +269,42 @@
 
     <!-- Main Dashboard Container -->
     <div id="main-dashboard" style="display: none;">
-        <div id="report-container">
-            <!-- Header Section -->
-            <div class="header-container">
-                <div>
-                    <h1>Personal Expense Tracker</h1>
-                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 4px;">
-                        Welcome, <span id="user-display-name"
-                            style="color: var(--neon-rose); font-weight: 700;">User</span>!
-                    </p>
-                </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="theme-toggle-btn" onclick="toggleTheme()">
-                        <span id="theme-icon">☀️</span> <span id="theme-text">Bright Mode</span>
-                    </button>
-                    <button class="logout-btn" onclick="logout()">Logout</button>
-                </div>
+        <!-- Header Section -->
+        <div class="header-container">
+            <div>
+                <h1>Personal Expense Tracker</h1>
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 4px;">
+                    Welcome, <span id="user-display-name"
+                        style="color: var(--neon-rose); font-weight: 700;">User</span>!
+                </p>
             </div>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button class="add-expense-trigger-btn" onclick="openAddModal()">+ Add Expense</button>
+                <button class="theme-toggle-btn" onclick="toggleTheme()">
+                    <span id="theme-icon">☀️</span> <span id="theme-text">Bright Mode</span>
+                </button>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
 
+        <!-- Navigation Bar for Separate Pages -->
+        <div class="nav-tabs">
+            <button type="button" class="nav-tab-btn active" id="nav-overview" onclick="switchPage('overview')">
+                Dashboard & AI
+            </button>
+            <button type="button" class="nav-tab-btn" id="nav-records" onclick="switchPage('records')">
+                Expense Records
+            </button>
+            <button type="button" class="nav-tab-btn" id="nav-category" onclick="switchPage('category')">
+                Category Analytics
+            </button>
+            <button type="button" class="nav-tab-btn" id="nav-trend" onclick="switchPage('trend')">
+                Spending Trend
+            </button>
+        </div>
+
+        <!-- PAGE 1: OVERVIEW & AI ASSISTANT -->
+        <div id="page-overview" class="page-section">
             <!-- Summary & Budget Grid -->
             <div class="summary-grid">
                 <div class="summary-card">
@@ -288,25 +390,101 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Dual Chart Analytics -->
-            <div class="charts-grid">
-                <div class="card">
-                    <h2>Category Analytics</h2>
-                    <canvas id="expenseChart"></canvas>
+        <!-- PAGE 2: EXPENSE RECORDS -->
+        <div id="page-records" class="page-section" style="display: none;">
+            <div class="card">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+                    <h2 style="margin: 0;">Expense Records</h2>
+                    <button class="add-expense-trigger-btn" style="padding: 8px 14px; font-size: 0.85rem;"
+                        onclick="openAddModal()">+ Add New Record</button>
                 </div>
-                <div class="card">
-                    <h2>Spending Trend</h2>
-                    <canvas id="trendChart"></canvas>
+
+                <div class="controls-bar">
+                    <input type="text" id="search-input" placeholder="Search expenses..." onkeyup="fetchExpenses()">
+
+                    <select id="filter-category" onchange="fetchExpenses()">
+                        <option value="ALL">All Categories</option>
+                        <option value="Food">Food</option>
+                        <option value="Travel">Travel</option>
+                        <option value="Bills">Bills</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Other">Other</option>
+                    </select>
+
+                    <!-- Styled Start & End Date Wrappers -->
+                    <div class="date-input-wrapper">
+                        <label for="start-date">Start:</label>
+                        <input type="date" id="start-date" onchange="fetchExpenses()">
+                    </div>
+
+                    <div class="date-input-wrapper">
+                        <label for="end-date">End:</label>
+                        <input type="date" id="end-date" onchange="fetchExpenses()">
+                    </div>
+
+                    <button class="action-btn" style="grid-column: auto; padding: 10px 14px; font-size: 0.85rem;"
+                        onclick="clearDateFilter()">Clear Dates</button>
+
+                    <button class="export-btn" onclick="exportToCSV()">Export CSV</button>
+                    <button class="export-btn" style="background-color: #8B5CF6;" onclick="exportToPDF()">Export
+                        PDF</button>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Amount</th>
+                            <th>Category</th>
+                            <th>Mode</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expense-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- PAGE 3: CATEGORY ANALYTICS -->
+        <div id="page-category" class="page-section" style="display: none;">
+            <div class="card single-chart-card">
+                <h2>Category Analytics</h2>
+                <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 4px;">
+                    Visual breakdown of your total expenses across categories
+                </p>
+                <div class="single-chart-wrapper">
+                    <canvas id="expenseChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Add Expense Form -->
-        <div class="card">
-            <h2>Add New Expense</h2>
+        <!-- PAGE 4: SPENDING TREND -->
+        <div id="page-trend" class="page-section" style="display: none;">
+            <div class="card single-chart-card">
+                <h2>Spending Trend</h2>
+                <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 4px;">
+                    Chronological view of your daily spending pattern
+                </p>
+                <div class="single-chart-wrapper">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD EXPENSE POP-UP MODAL -->
+    <div class="modal-overlay" id="add-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Expense</h2>
+                <button class="close-modal-btn" onclick="closeAddModal()">&times;</button>
+            </div>
             <form id="expense-form">
-                <input type="text" id="title" placeholder="Title" required>
+                <input type="text" id="title" placeholder="Title (e.g., Lunch, Metro, Groceries)" required>
                 <input type="number" id="amount" step="0.01" placeholder="Amount (in ₹)" required>
                 <select id="category" required>
                     <option value="">Select Category</option>
@@ -323,61 +501,12 @@
                 </select>
                 <input type="date" id="date" required>
                 <input type="text" id="notes" placeholder="Notes (Optional)">
-                <button type="submit">Add Expense</button>
+                <button type="submit">Save Expense</button>
             </form>
-        </div>
-
-        <!-- Records & Filters -->
-        <div class="card">
-            <h2>Expense Records</h2>
-            <div class="controls-bar">
-                <input type="text" id="search-input" placeholder="Search expenses..." onkeyup="fetchExpenses()">
-
-                <select id="filter-category" onchange="fetchExpenses()">
-                    <option value="ALL">All Categories</option>
-                    <option value="Food">Food</option>
-                    <option value="Travel">Travel</option>
-                    <option value="Bills">Bills</option>
-                    <option value="Shopping">Shopping</option>
-                    <option value="Other">Other</option>
-                </select>
-
-                <!-- Styled Start & End Date Wrappers -->
-                <div class="date-input-wrapper">
-                    <label for="start-date">Start:</label>
-                    <input type="date" id="start-date" onchange="fetchExpenses()">
-                </div>
-
-                <div class="date-input-wrapper">
-                    <label for="end-date">End:</label>
-                    <input type="date" id="end-date" onchange="fetchExpenses()">
-                </div>
-
-                <button class="action-btn" style="grid-column: auto; padding: 10px 14px; font-size: 0.85rem;"
-                    onclick="clearDateFilter()">Clear Dates</button>
-
-                <button class="export-btn" onclick="exportToCSV()">Export CSV</button>
-                <button class="export-btn" style="background-color: #8B5CF6;" onclick="exportToPDF()">Export
-                    PDF</button>
-            </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Amount</th>
-                        <th>Category</th>
-                        <th>Mode</th>
-                        <th>Date</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="expense-list"></tbody>
-            </table>
         </div>
     </div>
 
-    <!-- Edit Modal -->
+    <!-- EDIT EXPENSE POP-UP MODAL -->
     <div class="modal-overlay" id="edit-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -414,6 +543,37 @@
         let trendChartInstance = null;
         let allExpensesData = [];
 
+        /* Page Switching Logic */
+        function switchPage(pageName) {
+            document.querySelectorAll(".page-section").forEach(sec => {
+                sec.style.display = "none";
+            });
+            document.querySelectorAll(".nav-tab-btn").forEach(btn => {
+                btn.classList.remove("active");
+            });
+
+            document.getElementById(`page-${pageName}`).style.display = "block";
+            document.getElementById(`nav-${pageName}`).classList.add("active");
+
+            // Re-render charts cleanly when opening Category Analytics or Spending Trend page
+            if (pageName === "category" || pageName === "trend") {
+                renderCharts(allExpensesData);
+            }
+        }
+
+        /* Add Expense Pop-up Modal Logic */
+        function openAddModal() {
+            const dateInput = document.getElementById("date");
+            if (!dateInput.value) {
+                dateInput.valueAsDate = new Date();
+            }
+            document.getElementById("add-modal").classList.add("active");
+        }
+
+        function closeAddModal() {
+            document.getElementById("add-modal").classList.remove("active");
+        }
+
         function getAuthHeaders() {
             const token = localStorage.getItem("jwt_token");
             return {
@@ -442,7 +602,6 @@
             document.getElementById("auth-toggle-text").innerText = isSignUpMode ? "Already have an account?" : "Don't have an account?";
             document.getElementById("auth-toggle-link").innerText = isSignUpMode ? "Login" : "Sign Up";
 
-            // Tab active highlight
             document.getElementById("tab-login").style.background = isSignUpMode ? "transparent" : "#FF2D95";
             document.getElementById("tab-login").style.color = isSignUpMode ? "inherit" : "#fff";
             document.getElementById("tab-signup").style.background = isSignUpMode ? "#FF2D95" : "transparent";
@@ -525,6 +684,7 @@
                 document.getElementById("auth-screen").style.display = "none";
                 document.getElementById("main-dashboard").style.display = "block";
                 document.getElementById("user-display-name").innerText = username;
+                switchPage("overview");
                 fetchExpenses();
                 fetchAIInsights();
             } else {
@@ -671,6 +831,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: true,
                     plugins: { legend: { position: 'bottom', labels: { color: textColor } } }
                 }
             });
@@ -704,6 +865,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: true,
                     scales: {
                         x: { ticks: { color: textColor }, grid: { display: false } },
                         y: { ticks: { color: textColor }, grid: { color: 'rgba(255,255,255,0.05)' } }
@@ -769,10 +931,12 @@
                 `;
             });
 
-            document.getElementById("total-amount").innerText = totalSpent.toFixed(2);
-            calculateBudget(totalSpent);
-            updateInsights(filteredData);
-            renderCharts(filteredData);
+            // Overall total spent across all expenses
+            const overallTotal = allExpensesData.reduce((sum, item) => sum + item.amount, 0);
+            document.getElementById("total-amount").innerText = overallTotal.toFixed(2);
+            calculateBudget(overallTotal);
+            updateInsights(allExpensesData);
+            renderCharts(allExpensesData);
         }
 
         function openEditModal(id) {
@@ -835,6 +999,7 @@
             });
 
             document.getElementById("expense-form").reset();
+            closeAddModal();
             fetchExpenses();
             fetchAIInsights();
         });
