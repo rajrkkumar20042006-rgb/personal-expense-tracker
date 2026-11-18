@@ -30,6 +30,10 @@ def serve_frontend():
 def serve_css():
     return FileResponse("style.css")
 
+@app.get("/icon.png", response_class=FileResponse)
+def serve_icon():
+    return FileResponse("icon.png")
+
 # Register New User
 @app.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
