@@ -147,12 +147,35 @@
     <!-- Auth Screen Modal -->
     <div class="auth-overlay" id="auth-screen">
         <div class="auth-card">
-            <h2 id="auth-title">Login to Account</h2>
+            <!-- Login / Sign Up Switch Tabs -->
+            <div
+                style="display: flex; gap: 8px; margin-bottom: 18px; background: rgba(255,255,255,0.06); padding: 5px; border-radius: 10px;">
+                <button type="button" id="tab-login" onclick="setAuthMode(false)"
+                    style="flex: 1; padding: 8px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; background: #FF2D95; color: #fff;">
+                    Login
+                </button>
+                <button type="button" id="tab-signup" onclick="setAuthMode(true)"
+                    style="flex: 1; padding: 8px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; background: transparent; color: inherit;">
+                    Sign Up
+                </button>
+            </div>
+
+            <h2 id="auth-title">Welcome Back</h2>
+            <p id="auth-subtitle" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
+                Login to access your AI Expense Tracker
+            </p>
+
+            <!-- Status / Error Message Box -->
+            <div id="auth-message"
+                style="display: none; padding: 10px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 12px; font-weight: 600;">
+            </div>
+
             <form id="auth-form">
-                <input type="text" id="auth-username" placeholder="Username" required>
-                <input type="password" id="auth-password" placeholder="Password" required>
+                <input type="text" id="auth-username" placeholder="Enter Username" required>
+                <input type="password" id="auth-password" placeholder="Enter Password" required>
                 <button type="submit" id="auth-submit-btn">Login</button>
             </form>
+
             <p class="auth-toggle">
                 <span id="auth-toggle-text">Don't have an account?</span>
                 <a onclick="toggleAuthMode()" id="auth-toggle-link">Sign Up</a>
@@ -399,12 +422,35 @@
             };
         }
 
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById("auth-title").innerText = isSignUpMode ? "Create New Account" : "Login to Account";
-            document.getElementById("auth-submit-btn").innerText = isSignUpMode ? "Sign Up" : "Login";
+        function showAuthMessage(text, isError = false) {
+            const msgBox = document.getElementById("auth-message");
+            msgBox.style.display = "block";
+            msgBox.innerText = text;
+            msgBox.style.background = isError ? "rgba(239, 68, 68, 0.18)" : "rgba(16, 185, 129, 0.18)";
+            msgBox.style.color = isError ? "#F87171" : "#34D399";
+            msgBox.style.border = isError ? "1px solid rgba(239, 68, 68, 0.4)" : "1px solid rgba(16, 185, 129, 0.4)";
+        }
+
+        function setAuthMode(signUp) {
+            isSignUpMode = signUp;
+            document.getElementById("auth-message").style.display = "none";
+            document.getElementById("auth-title").innerText = isSignUpMode ? "Create New Account" : "Welcome Back";
+            document.getElementById("auth-subtitle").innerText = isSignUpMode
+                ? "Sign up to start tracking expenses with AI"
+                : "Login to access your AI Expense Tracker";
+            document.getElementById("auth-submit-btn").innerText = isSignUpMode ? "Create Account" : "Login";
             document.getElementById("auth-toggle-text").innerText = isSignUpMode ? "Already have an account?" : "Don't have an account?";
             document.getElementById("auth-toggle-link").innerText = isSignUpMode ? "Login" : "Sign Up";
+
+            // Tab active highlight
+            document.getElementById("tab-login").style.background = isSignUpMode ? "transparent" : "#FF2D95";
+            document.getElementById("tab-login").style.color = isSignUpMode ? "inherit" : "#fff";
+            document.getElementById("tab-signup").style.background = isSignUpMode ? "#FF2D95" : "transparent";
+            document.getElementById("tab-signup").style.color = isSignUpMode ? "#fff" : "inherit";
+        }
+
+        function toggleAuthMode() {
+            setAuthMode(!isSignUpMode);
         }
 
         async function performLogin(username, password) {
@@ -422,33 +468,46 @@
                 const data = await res.json();
                 localStorage.setItem("jwt_token", data.access_token);
                 localStorage.setItem("username", username);
+                document.getElementById("auth-form").reset();
                 checkAuth();
             } else {
                 const err = await res.json();
-                alert(err.detail || "Invalid username or password");
+                showAuthMessage(err.detail || "Invalid username or password", true);
             }
         }
 
         document.getElementById("auth-form").addEventListener("submit", async (e) => {
             e.preventDefault();
-            const username = document.getElementById("auth-username").value;
+            const submitBtn = document.getElementById("auth-submit-btn");
+            const username = document.getElementById("auth-username").value.trim();
             const password = document.getElementById("auth-password").value;
 
-            if (isSignUpMode) {
-                const res = await fetch(`${API_BASE}/register`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, password })
-                });
+            submitBtn.disabled = true;
+            submitBtn.innerText = isSignUpMode ? "Creating Account..." : "Logging in...";
 
-                if (res.ok) {
-                    await performLogin(username, password);
+            try {
+                if (isSignUpMode) {
+                    const res = await fetch(`${API_BASE}/register`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ username, password })
+                    });
+
+                    if (res.ok) {
+                        showAuthMessage("Account created! Opening your dashboard...", false);
+                        await performLogin(username, password);
+                    } else {
+                        const err = await res.json();
+                        showAuthMessage(err.detail || "Registration failed", true);
+                    }
                 } else {
-                    const err = await res.json();
-                    alert(err.detail || "Registration failed");
+                    await performLogin(username, password);
                 }
-            } else {
-                await performLogin(username, password);
+            } catch (error) {
+                showAuthMessage("Server is waking up, please click again in a few seconds.", true);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = isSignUpMode ? "Create Account" : "Login";
             }
         });
 
