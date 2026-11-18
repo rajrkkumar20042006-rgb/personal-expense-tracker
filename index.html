@@ -7,6 +7,139 @@
     <title>Personal Expense Tracker</title>
     <link rel="stylesheet" href="/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* AI Financial Assistant Styling */
+        .ai-assistant-card {
+            margin: 22px 0;
+            padding: 22px;
+            border-radius: 16px;
+            background: linear-gradient(145deg, rgba(139, 92, 246, 0.12), rgba(255, 45, 149, 0.08));
+            border: 1px solid rgba(139, 92, 246, 0.35);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        body.light-mode .ai-assistant-card {
+            background: linear-gradient(145deg, rgba(139, 92, 246, 0.08), rgba(234, 170, 0, 0.1));
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+        }
+
+        .ai-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .ai-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ai-badge {
+            background: linear-gradient(90deg, #8B5CF6, #EC4899);
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .ai-refresh-btn {
+            background: rgba(139, 92, 246, 0.2);
+            color: inherit;
+            border: 1px solid rgba(139, 92, 246, 0.45);
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: auto;
+        }
+
+        .ai-refresh-btn:hover {
+            background: #8B5CF6;
+            color: #fff;
+        }
+
+        .ai-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .ai-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        body.light-mode .ai-box {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(58, 15, 52, 0.12);
+        }
+
+        .ai-box h3 {
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #A78BFA;
+        }
+
+        body.light-mode .ai-box h3 {
+            color: #6D28D9;
+        }
+
+        .ai-prediction-val {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #10B981;
+            margin: 6px 0;
+        }
+
+        .ai-subtext {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .ai-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ai-list li {
+            font-size: 0.85rem;
+            line-height: 1.45;
+            padding-left: 14px;
+            position: relative;
+        }
+
+        .ai-list li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #EC4899;
+            font-weight: bold;
+        }
+
+        .ai-alert-item::before {
+            color: #F59E0B !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -85,6 +218,51 @@
                     <span class="label">Total Records</span>
                     <span class="value" id="total-count">0</span>
                     <span class="sub-value">Transactions</span>
+                </div>
+            </div>
+
+            <!-- AI Financial Assistant Section -->
+            <div class="ai-assistant-card">
+                <div class="ai-header">
+                    <div class="ai-title-wrap">
+                        <h2 style="margin: 0;">AI Financial Assistant</h2>
+                        <span class="ai-badge">Gemini + ML</span>
+                    </div>
+                    <button type="button" class="ai-refresh-btn" onclick="fetchAIInsights()">Refresh AI
+                        Insights</button>
+                </div>
+
+                <div class="ai-grid">
+                    <!-- 1. Next Month Prediction -->
+                    <div class="ai-box">
+                        <h3>Next Month Prediction</h3>
+                        <div class="ai-prediction-val" id="ai-prediction-amount">₹0.00</div>
+                        <p class="ai-subtext" id="ai-prediction-note">Analyzing your spending velocity...</p>
+                    </div>
+
+                    <!-- 2. Unusual Spending Alerts -->
+                    <div class="ai-box">
+                        <h3>Unusual Spending Alerts</h3>
+                        <ul class="ai-list" id="ai-alerts-list">
+                            <li class="ai-alert-item">Scanning transactions for anomalies...</li>
+                        </ul>
+                    </div>
+
+                    <!-- 3. Spending Pattern Detection -->
+                    <div class="ai-box">
+                        <h3>Spending Patterns</h3>
+                        <ul class="ai-list" id="ai-patterns-list">
+                            <li>Detecting your spending habits...</li>
+                        </ul>
+                    </div>
+
+                    <!-- 4. AI Saving Suggestions -->
+                    <div class="ai-box">
+                        <h3>AI Saving Suggestions</h3>
+                        <ul class="ai-list" id="ai-suggestions-list">
+                            <li>Generating personalized saving tips...</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
@@ -289,9 +467,56 @@
                 document.getElementById("main-dashboard").style.display = "block";
                 document.getElementById("user-display-name").innerText = username;
                 fetchExpenses();
+                fetchAIInsights();
             } else {
                 document.getElementById("auth-screen").style.display = "flex";
                 document.getElementById("main-dashboard").style.display = "none";
+            }
+        }
+
+        async function fetchAIInsights() {
+            const predAmountEl = document.getElementById("ai-prediction-amount");
+            const predNoteEl = document.getElementById("ai-prediction-note");
+            const alertsEl = document.getElementById("ai-alerts-list");
+            const patternsEl = document.getElementById("ai-patterns-list");
+            const suggestionsEl = document.getElementById("ai-suggestions-list");
+
+            predNoteEl.innerText = "Analyzing your spending velocity...";
+            suggestionsEl.innerHTML = "<li>Asking Gemini AI for personalized tips...</li>";
+
+            try {
+                const res = await fetch(`${API_BASE}/ai-insights`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+
+                if (!res.ok) {
+                    throw new Error("Failed to fetch AI insights");
+                }
+
+                const data = await res.json();
+
+                predAmountEl.innerText = `₹${Number(data.predicted_next_month || 0).toFixed(2)}`;
+                predNoteEl.innerText = data.prediction_note || "";
+
+                alertsEl.innerHTML = (data.unusual_alerts || [])
+                    .map(item => `<li class="ai-alert-item">${item}</li>`)
+                    .join("");
+
+                patternsEl.innerHTML = (data.patterns || [])
+                    .map(item => `<li>${item}</li>`)
+                    .join("");
+
+                suggestionsEl.innerHTML = (data.saving_suggestions || [])
+                    .map(item => `<li>${item}</li>`)
+                    .join("");
+            } catch (err) {
+                predNoteEl.innerText = "Could not load AI forecast right now.";
+                suggestionsEl.innerHTML = "<li>Click 'Refresh AI Insights' to try again.</li>";
             }
         }
 
@@ -530,6 +755,7 @@
 
             closeEditModal();
             fetchExpenses();
+            fetchAIInsights();
         });
 
         document.getElementById("expense-form").addEventListener("submit", async (e) => {
@@ -551,6 +777,7 @@
 
             document.getElementById("expense-form").reset();
             fetchExpenses();
+            fetchAIInsights();
         });
 
         async function deleteExpense(id) {
@@ -559,6 +786,7 @@
                 headers: getAuthHeaders()
             });
             fetchExpenses();
+            fetchAIInsights();
         }
 
         function exportToCSV() {
