@@ -117,23 +117,6 @@
             margin-bottom: 16px;
         }
 
-        .ai-title-wrap {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .ai-badge {
-            background: linear-gradient(90deg, #8B5CF6, #EC4899);
-            color: #fff;
-            font-size: 0.72rem;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 999px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
         .ai-refresh-btn {
             background: rgba(139, 92, 246, 0.2);
             color: inherit;
@@ -150,6 +133,106 @@
         .ai-refresh-btn:hover {
             background: #8B5CF6;
             color: #fff;
+        }
+
+        /* Smart Daily Expenses (1-Click Quick Add) */
+        .daily-quick-section {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 18px;
+        }
+
+        body.light-mode .daily-quick-section {
+            background: rgba(16, 185, 129, 0.09);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+
+        .daily-quick-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .daily-quick-header h3 {
+            margin: 0;
+            font-size: 0.96rem;
+            color: #10B981;
+        }
+
+        body.light-mode .daily-quick-header h3 {
+            color: #047857;
+        }
+
+        .daily-quick-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .daily-item-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body.light-mode .daily-item-card {
+            background: #ffffff;
+            border: 1px solid rgba(58, 15, 52, 0.12);
+        }
+
+        .daily-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            overflow: hidden;
+        }
+
+        .daily-item-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .daily-item-meta {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+        }
+
+        .quick-add-btn {
+            background: #10B981;
+            color: #fff;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            width: auto;
+            transition: background 0.2s ease, transform 0.15s ease;
+        }
+
+        .quick-add-btn:hover {
+            background: #059669;
+            transform: scale(1.03);
+        }
+
+        .quick-add-btn:disabled {
+            opacity: 0.75;
+            cursor: default;
+            transform: none;
         }
 
         .ai-grid {
@@ -346,15 +429,25 @@
                 </div>
             </div>
 
-            <!-- AI Financial Assistant Section -->
+            <!-- AI Financial Assistant Section (Clean Header without Gemini + ML badge) -->
             <div class="ai-assistant-card">
                 <div class="ai-header">
-                    <div class="ai-title-wrap">
-                        <h2 style="margin: 0;">AI Financial Assistant</h2>
-                        <span class="ai-badge">Gemini + ML</span>
-                    </div>
+                    <h2 style="margin: 0;">AI Financial Assistant</h2>
                     <button type="button" class="ai-refresh-btn" onclick="fetchAIInsights()">Refresh AI
                         Insights</button>
+                </div>
+
+                <!-- Smart Daily Expenses (1-Click Auto Add) -->
+                <div class="daily-quick-section">
+                    <div class="daily-quick-header">
+                        <h3>Smart Daily Expenses (1-Click Add)</h3>
+                        <span style="font-size: 0.78rem; color: var(--text-muted);">
+                            AI-detected daily spends — tap <strong>+ Add</strong> to log for today
+                        </span>
+                    </div>
+                    <div class="daily-quick-grid" id="daily-quick-list">
+                        <p class="ai-subtext" style="margin: 0;">Scanning your daily spending habits...</p>
+                    </div>
                 </div>
 
                 <div class="ai-grid">
@@ -414,7 +507,6 @@
                         <option value="Other">Other</option>
                     </select>
 
-                    <!-- Styled Start & End Date Wrappers -->
                     <div class="date-input-wrapper">
                         <label for="start-date">Start:</label>
                         <input type="date" id="start-date" onchange="fetchExpenses()">
@@ -542,6 +634,7 @@
         let categoryChartInstance = null;
         let trendChartInstance = null;
         let allExpensesData = [];
+        let recurringItemsList = [];
 
         /* Page Switching Logic */
         function switchPage(pageName) {
@@ -555,7 +648,6 @@
             document.getElementById(`page-${pageName}`).style.display = "block";
             document.getElementById(`nav-${pageName}`).classList.add("active");
 
-            // Re-render charts cleanly when opening Category Analytics or Spending Trend page
             if (pageName === "category" || pageName === "trend") {
                 renderCharts(allExpensesData);
             }
@@ -693,6 +785,74 @@
             }
         }
 
+        /* 1-Click Quick Add for Detected Daily Expenses */
+        async function quickAddDailyExpense(index, btnElement) {
+            const item = recurringItemsList[index];
+            if (!item) return;
+
+            const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+            const originalText = btnElement.innerText;
+            btnElement.disabled = true;
+            btnElement.innerText = "Adding...";
+
+            try {
+                const res = await fetch(`${API_BASE}/expenses/`, {
+                    method: "POST",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        title: item.title,
+                        amount: parseFloat(item.amount),
+                        category: item.category,
+                        payment_mode: item.payment_mode,
+                        date: todayStr,
+                        notes: "Quick-added daily expense"
+                    })
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+
+                if (res.ok) {
+                    btnElement.innerText = "✓ Added!";
+                    btnElement.style.background = "#059669";
+                    await fetchExpenses();
+                    setTimeout(() => {
+                        btnElement.disabled = false;
+                        btnElement.innerText = originalText;
+                        btnElement.style.background = "";
+                    }, 1200);
+                } else {
+                    btnElement.disabled = false;
+                    btnElement.innerText = originalText;
+                }
+            } catch (err) {
+                btnElement.disabled = false;
+                btnElement.innerText = originalText;
+            }
+        }
+
+        function renderDailyQuickItems(items) {
+            recurringItemsList = items || [];
+            const container = document.getElementById("daily-quick-list");
+
+            if (!recurringItemsList.length) {
+                container.innerHTML = `<p class="ai-subtext" style="margin: 0;">Add an expense at least twice (e.g., Tea, Metro, Lunch) and AI will automatically unlock 1-Click Daily Add here.</p>`;
+                return;
+            }
+
+            container.innerHTML = recurringItemsList.map((item, idx) => `
+                <div class="daily-item-card">
+                    <div class="daily-item-info">
+                        <span class="daily-item-title">${item.title}</span>
+                        <span class="daily-item-meta">₹${item.amount} • ${item.category} • ${item.payment_mode} (${item.label})</span>
+                    </div>
+                    <button type="button" class="quick-add-btn" onclick="quickAddDailyExpense(${idx}, this)">+ Add</button>
+                </div>
+            `).join("");
+        }
+
         async function fetchAIInsights() {
             const predAmountEl = document.getElementById("ai-prediction-amount");
             const predNoteEl = document.getElementById("ai-prediction-note");
@@ -701,7 +861,7 @@
             const suggestionsEl = document.getElementById("ai-suggestions-list");
 
             predNoteEl.innerText = "Analyzing your spending velocity...";
-            suggestionsEl.innerHTML = "<li>Asking Gemini AI for personalized tips...</li>";
+            suggestionsEl.innerHTML = "<li>Generating personalized saving tips...</li>";
 
             try {
                 const res = await fetch(`${API_BASE}/ai-insights`, {
@@ -718,6 +878,8 @@
                 }
 
                 const data = await res.json();
+
+                renderDailyQuickItems(data.recurring_expenses || []);
 
                 predAmountEl.innerText = `₹${Number(data.predicted_next_month || 0).toFixed(2)}`;
                 predNoteEl.innerText = data.prediction_note || "";
@@ -900,7 +1062,6 @@
             const endDate = document.getElementById("end-date").value;
 
             list.innerHTML = "";
-            let totalSpent = 0;
 
             const filteredData = allExpensesData.filter(item => {
                 const matchesCategory = filterCategory === "ALL" || item.category === filterCategory;
@@ -915,7 +1076,6 @@
             });
 
             filteredData.forEach(item => {
-                totalSpent += item.amount;
                 list.innerHTML += `
                     <tr>
                         <td>${item.title}</td>
@@ -931,7 +1091,6 @@
                 `;
             });
 
-            // Overall total spent across all expenses
             const overallTotal = allExpensesData.reduce((sum, item) => sum + item.amount, 0);
             document.getElementById("total-amount").innerText = overallTotal.toFixed(2);
             calculateBudget(overallTotal);

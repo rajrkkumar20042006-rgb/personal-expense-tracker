@@ -1,7 +1,7 @@
 import os
 import statistics
 from datetime import datetime
-from collections import defaultdict
+from collections import defaultdict, Counter
 from typing import List
 
 from fastapi import FastAPI, Depends, HTTPException, status
@@ -90,7 +90,7 @@ def delete_expense(expense_id: int, db: Session = Depends(get_db), current_user:
     db.commit()
     return None
 
-# AI Insights & Financial Analytics Route
+# AI Insights & Smart Daily Expense Detection Route
 @app.get("/ai-insights")
 def get_ai_insights(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
@@ -98,21 +98,22 @@ def get_ai_insights(db: Session = Depends(get_db), current_user: models.User = D
     if not expenses:
         return {
             "predicted_next_month": 0.0,
-            "prediction_note": "Add at least 3 expenses to unlock AI monthly spending forecasts.",
+            "prediction_note": "Add at least 3 expenses to unlock monthly spending forecasts.",
             "patterns": ["No transaction history yet. Start adding daily expenses to detect habits."],
             "unusual_alerts": ["No anomalies detected yet."],
             "saving_suggestions": [
                 "Track every small UPI and cash expense daily to build an accurate baseline.",
                 "Set a realistic monthly budget limit at the top of your dashboard.",
                 "Categorize your expenses properly to identify non-essential spending."
-            ]
+            ],
+            "recurring_expenses": []
         }
 
     total_spent = sum(e.amount for e in expenses)
     category_amounts = defaultdict(list)
     payment_counts = defaultdict(int)
+    title_groups = defaultdict(list)
     weekend_spend = 0.0
-    weekday_spend = 0.0
     micro_spends = []
     unique_dates = set()
 
@@ -120,18 +121,57 @@ def get_ai_insights(db: Session = Depends(get_db), current_user: models.User = D
         category_amounts[e.category].append(e.amount)
         payment_counts[e.payment_mode] += 1
         unique_dates.add(e.date)
+        norm_title = e.title.strip().lower()
+        if norm_title:
+            title_groups[norm_title].append(e)
         if e.amount <= 200:
             micro_spends.append(e.amount)
         try:
             dt = datetime.strptime(e.date, "%Y-%m-%d")
-            if dt.weekday() >= 5:  # Saturday (5) or Sunday (6)
+            if dt.weekday() >= 5:
                 weekend_spend += e.amount
-            else:
-                weekday_spend += e.amount
         except ValueError:
             pass
 
-    # 1. Next Month Expense Prediction (Daily Velocity + Trend Adjustment)
+    # 0. Smart Daily / Recurring Expense Detection (for 1-Click Quick Add)
+    daily_keywords = {
+        "tea", "chai", "coffee", "milk", "doodh", "metro", "auto", "bus", "cab",
+        "lunch", "breakfast", "dinner", "tiffin", "snacks", "water", "juice",
+        "roti", "sabzi", "fruits", "petrol", "parking", "canteen"
+    }
+    recurring_candidates = []
+    for norm_title, items in title_groups.items():
+        count = len(items)
+        items_sorted = sorted(items, key=lambda x: (x.date, x.id), reverse=True)
+        latest = items_sorted[0]
+        # Most frequent amount for this expense
+        common_amount = Counter(i.amount for i in items).most_common(1)[0][0]
+        is_keyword_daily = any(word in norm_title.split() or word in norm_title for word in daily_keywords)
+
+        if count >= 2 or is_keyword_daily:
+            recurring_candidates.append({
+                "title": latest.title.strip(),
+                "amount": common_amount,
+                "category": latest.category,
+                "payment_mode": latest.payment_mode,
+                "count": count,
+                "label": f"{count}x logged" if count >= 2 else "Daily habit",
+                "latest_date": latest.date
+            })
+
+    recurring_candidates.sort(key=lambda x: (x["count"], x["latest_date"]), reverse=True)
+    recurring_expenses = [
+        {
+            "title": item["title"],
+            "amount": item["amount"],
+            "category": item["category"],
+            "payment_mode": item["payment_mode"],
+            "label": item["label"]
+        }
+        for item in recurring_candidates[:6]
+    ]
+
+    # 1. Next Month Expense Prediction
     active_days = max(len(unique_dates), 1)
     daily_avg = total_spent / active_days
     sorted_expenses = sorted(expenses, key=lambda x: x.date)
@@ -143,13 +183,13 @@ def get_ai_insights(db: Session = Depends(get_db), current_user: models.User = D
         second_half_avg = sum(e.amount for e in sorted_expenses[mid:]) / (len(sorted_expenses) - mid)
         if first_half_avg > 0:
             ratio = second_half_avg / first_half_avg
-            trend_multiplier = max(0.85, min(1.25, ratio))  # Cap adjustment between -15% and +25%
+            trend_multiplier = max(0.85, min(1.25, ratio))
 
     predicted_next_month = round(daily_avg * 30 * trend_multiplier, 2)
     trend_direction = "upward" if trend_multiplier > 1.03 else ("downward" if trend_multiplier < 0.97 else "steady")
     prediction_note = f"Based on ₹{daily_avg:.0f}/day average across {active_days} active day(s) with a {trend_direction} trend."
 
-    # 2. Unusual Spending Alerts (Statistical Z-Score & Category Outlier Detection)
+    # 2. Unusual Spending Alerts
     unusual_alerts = []
     for e in expenses:
         cat_list = category_amounts[e.category]
@@ -180,7 +220,7 @@ def get_ai_insights(db: Session = Depends(get_db), current_user: models.User = D
     if len(micro_spends) >= 3:
         patterns.append(f"Frequent Micro-Spends: {len(micro_spends)} small purchases (≤₹200) added up to ₹{sum(micro_spends):.0f}.")
 
-    # 4. AI-Based Saving Suggestions (Google Gemini API with Smart Fallback)
+    # 4. AI-Based Saving Suggestions
     cat_summary = {cat: round(sum(vals), 2) for cat, vals in category_amounts.items()}
     top_category = max(cat_summary.items(), key=lambda x: x[1])
 
@@ -206,7 +246,7 @@ def get_ai_insights(db: Session = Depends(get_db), current_user: models.User = D
                 lines = [line.strip(" -•*123.") for line in response.text.strip().split("\n") if line.strip()]
                 saving_suggestions = lines[:3]
         except Exception as exc:
-            print("Gemini API fallback triggered:", exc)
+            print("AI fallback triggered:", exc)
 
     if not saving_suggestions:
         saving_suggestions = [
@@ -220,5 +260,6 @@ def get_ai_insights(db: Session = Depends(get_db), current_user: models.User = D
         "prediction_note": prediction_note,
         "patterns": patterns,
         "unusual_alerts": unusual_alerts[:3],
-        "saving_suggestions": saving_suggestions
+        "saving_suggestions": saving_suggestions,
+        "recurring_expenses": recurring_expenses
     }
